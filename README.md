@@ -5,4 +5,4 @@ DEVIEW 2021에서 발표된 'CoreImage와 Metal을 이용해 영상에 다양한
 (https://deview.kr/2021/cfs)
 
 ## Licenses
-[Big buck bunny movie](https://peach.blender.org) has been licensed under the [Creative Commons Attribution 3.0 license.](creativecommons.org/licenses/by/3.0/)
+[Big buck bunny movie](https://peach.blender.org) has been licensed under the [Creative Commons Attribution 3.0 license.](https://creativecommons.org/licenses/by/3.0/)
