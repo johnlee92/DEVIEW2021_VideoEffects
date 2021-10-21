@@ -15,7 +15,7 @@ class SimpleVideoPlayerViewModel: ObservableObject {
     let player = AVPlayer(url: defaultURL)
 }
 
-struct SimpleVideoPlayerView: View {
+struct SimpleVideoPlayer: View {
     
     @StateObject var model = SimpleVideoPlayerViewModel()
     
@@ -39,13 +39,14 @@ struct SimpleVideoPlayerView: View {
                     }
                 }
             })
-            .toolbar {
+            .toolbar(content: {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Open") {
-                        showsPhotoPicker = true
+                        self.showsPhotoPicker = true
                     }
                 }
-            }
-            .navigationBarTitle("Video Player", displayMode: .inline)
+            })
+            .navigationTitle("Simple Video Player")
+            .navigationBarTitleDisplayMode(.inline)
     }
 }

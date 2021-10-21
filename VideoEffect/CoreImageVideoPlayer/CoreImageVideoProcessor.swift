@@ -15,26 +15,24 @@ final class CoreImageVideoProcessor: ObservableObject {
     
     let player = AVPlayer(url: defaultURL)
     
-    @Published
-    var currentFilter: Filter = .none {
+    @Published var currentFilter: Filter = .none {
         didSet {
-            updateVideoComposition()
+            updateVideoComposition(with: currentFilter)
         }
     }
     
-    @Published
-    private(set) var exportProgress: Float?
+    @Published var exportProgress: Float?
     
     private var timerObserver: AnyCancellable?
     
     init() {
-        updateVideoComposition()
+        updateVideoComposition(with: currentFilter)
     }
     
     func updateURL(_ url: URL) {
         
         let asset = AVAsset(url: url)
-        let videoComposition = createVideoComposition(asset: asset)
+        let videoComposition = createVideoComposition(asset: asset, filter: currentFilter)
         
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.videoComposition = videoComposition
@@ -43,20 +41,19 @@ final class CoreImageVideoProcessor: ObservableObject {
         self.player.play()
     }
     
-    private func createVideoComposition(asset: AVAsset) -> AVVideoComposition? {
+    private func createVideoComposition(asset: AVAsset, filter: Filter) -> AVVideoComposition? {
         
         let videoComposition = AVVideoComposition(asset: asset) { request in
             
             let sourceImage: CIImage = request.sourceImage
             
-            guard let filter = self.currentFilter.filter else {
+            guard let filter = filter.filter else {
                 request.finish(with: sourceImage, context: nil)
                 return
             }
             
             do {
-                let outputImage = try filter.process(image: sourceImage,
-                                                     at: request.compositionTime)
+                let outputImage = try filter.process(image: sourceImage, at: request.compositionTime)
                 request.finish(with: outputImage, context: nil)
             } catch {
                 request.finish(with: error)
@@ -66,51 +63,50 @@ final class CoreImageVideoProcessor: ObservableObject {
         return videoComposition
     }
     
-    private func updateVideoComposition() {
+    private func updateVideoComposition(with filter: Filter) {
         
         guard let asset = self.player.currentItem?.asset else {
             return
         }
         
-        let videoComposition = createVideoComposition(asset: asset)
+        let videoComposition = createVideoComposition(asset: asset, filter: filter)
         
         self.player.currentItem?.videoComposition = videoComposition
     }
     
-    func export(completion: @escaping (Result<URL, Error>) -> Void) {
+    func export(completionHandler: @escaping (Result<URL, Error>) -> Void) {
         
-        guard let currentItem = self.player.currentItem,
+        guard let currentItem = player.currentItem,
               let exportSession = AVAssetExportSession(asset: currentItem.asset,
                                                        presetName: AVAssetExportPreset1280x720) else {
+                  completionHandler(.failure(AVError(.unknown)))
                   return
               }
         
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("mov")
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension("mov")
         
         exportSession.outputURL = outputURL
         exportSession.outputFileType = .mov
         exportSession.videoComposition = currentItem.videoComposition
-        
-        self.timerObserver = Timer.publish(every: 0.1, on: .main, in: .default)
-            .autoconnect()
-            .sink(receiveValue: { _ in
-                if exportSession.status == .completed {
-                    self.exportProgress = nil
-                } else {
-                    self.exportProgress = exportSession.progress
-                }
-            })
-        
-        exportSession.exportAsynchronously { [weak exportSession] in
+    
+        timerObserver = Timer.publish(every: 0.1, on: .current, in: .default).autoconnect().sink(receiveValue: { [weak self] _ in
             
-            if let error = exportSession?.error {
-                completion(.failure(error))
-            } else if let outputURL = exportSession?.outputURL {
-                completion(.success(outputURL))
+            if exportSession.status == .exporting {
+                self?.exportProgress = exportSession.progress
             } else {
-                completion(.failure(AVError(.unknown)))
+                self?.exportProgress = nil
+            }
+        })
+        
+        exportSession.exportAsynchronously {
+            if let error = exportSession.error {
+                completionHandler(.failure(error))
+            } else if let url = exportSession.outputURL {
+                completionHandler(.success(url))
+            } else {
+                completionHandler(.failure(AVError(.unknown)))
             }
         }
     }

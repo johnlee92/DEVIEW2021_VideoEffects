@@ -17,15 +17,13 @@ final class MetalVideoProcessor: ObservableObject {
     
     let player = AVPlayer(url: defaultURL)
     
-    @Published
-    var currentFilter: Filter = .none {
+    @Published var currentFilter: Filter = .none {
         didSet {
-            updateVideoComposition()
+            updateVideoComposition(with: currentFilter)
         }
     }
     
-    @Published
-    private(set) var exportProgress: Float?
+    @Published var exportProgress: Float?
     
     private var timerObserver: AnyCancellable?
     
@@ -42,13 +40,13 @@ final class MetalVideoProcessor: ObservableObject {
     private let ciContext = CIContext(mtlDevice: device)
     
     init() {
-        updateVideoComposition()
+        updateVideoComposition(with: currentFilter)
     }
     
     func updateURL(_ url: URL) {
         
         let asset = AVAsset(url: url)
-        let videoComposition = createVideoComposition(asset: asset)
+        let videoComposition = createVideoComposition(asset: asset, filter: currentFilter)
         
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.videoComposition = videoComposition
@@ -57,51 +55,52 @@ final class MetalVideoProcessor: ObservableObject {
         self.player.play()
     }
     
-    func updateVideoComposition() {
+    private func updateVideoComposition(with filter: Filter) {
         
         guard let asset = self.player.currentItem?.asset else {
             return
         }
         
-        let videoComposition = createVideoComposition(asset: asset)
+        let videoComposition = createVideoComposition(asset: asset, filter: filter)
         
         self.player.currentItem?.videoComposition = videoComposition
     }
     
-    func export(completion: @escaping (Result<URL, Error>) -> Void) {
+    func export(completionHandler: @escaping (Result<URL, Error>) -> Void) {
         
-        guard let currentItem = self.player.currentItem,
+        guard let currentItem = player.currentItem,
               let exportSession = AVAssetExportSession(asset: currentItem.asset,
                                                        presetName: AVAssetExportPreset1280x720) else {
+                  completionHandler(.failure(AVError(.unknown)))
                   return
               }
         
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("mov")
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension("mov")
         
         exportSession.outputURL = outputURL
         exportSession.outputFileType = .mov
         exportSession.videoComposition = currentItem.videoComposition
-        
-        self.timerObserver = Timer.publish(every: 0.1, on: .main, in: .default)
+    
+        timerObserver = Timer.publish(every: 0.1, on: .current, in: .default)
             .autoconnect()
-            .sink(receiveValue: { _ in
-                if exportSession.status == .completed {
-                    self.exportProgress = nil
-                } else {
-                    self.exportProgress = exportSession.progress
-                }
-            })
-        
-        exportSession.exportAsynchronously { [weak exportSession] in
+            .sink(receiveValue: { [weak self] _ in
             
-            if let error = exportSession?.error {
-                completion(.failure(error))
-            } else if let outputURL = exportSession?.outputURL {
-                completion(.success(outputURL))
+            if exportSession.status == .exporting {
+                self?.exportProgress = exportSession.progress
             } else {
-                completion(.failure(AVError(.unknown)))
+                self?.exportProgress = nil
+            }
+        })
+        
+        exportSession.exportAsynchronously {
+            if let error = exportSession.error {
+                completionHandler(.failure(error))
+            } else if let url = exportSession.outputURL {
+                completionHandler(.success(url))
+            } else {
+                completionHandler(.failure(AVError(.unknown)))
             }
         }
     }
@@ -109,58 +108,51 @@ final class MetalVideoProcessor: ObservableObject {
 
 extension MetalVideoProcessor {
     
-    private func createVideoComposition(asset: AVAsset) -> AVVideoComposition? {
+    private func createVideoComposition(asset: AVAsset, filter: Filter) -> AVVideoComposition? {
         
         let videoComposition = AVMutableVideoComposition()
-        
-        // Setup video composition (customVideoCompositorClass, instructions, renderSize, frameDuration)
         
         videoComposition.customVideoCompositorClass = Compositor.self
         videoComposition.instructions = [
             Instruction(
-                timeRange: CMTimeRange(start: CMTime.zero, end: CMTime.positiveInfinity),
-                filter: currentFilter.filter,
+                timeRange: CMTimeRange(start: .zero, end: .positiveInfinity),
                 handler: { [weak self] request in
                     
+                    // 1. Apply preferred transform
+                    
                     guard let self = self,
-                          let instruction = request.videoCompositionInstruction as? Instruction,
                           let trackID = request.sourceTrackIDs.first?.int32Value,
                           let sourcePixelBuffer = request.sourceFrame(byTrackID: trackID),
-                          let transform = asset.track(withTrackID: trackID)?.preferredTransform,
-                          let commandBuffer = self.commandQueue.makeCommandBuffer() else {
+                          let transform = asset.track(withTrackID: trackID)?.preferredTransform else {
                               return
                           }
                     
-                    // 1. Apply preferred transform
+                    guard let transformedPixelBuffer = request.renderContext.newPixelBuffer() else {
+                        return
+                    }
+                    
                     let transformFilter = AnyCoreImageVideoFilter(context: self.ciContext) { image, _ in
                         if transform.isIdentity { return image }
-                        
-                        return image.verticallyFlipped()
+                        return image
+                            .verticallyFlipped()
                             .transformed(by: transform)
                             .verticallyFlipped()
                     }
                     
-                    guard let transformedSourcePixelBuffer = request.renderContext.newPixelBuffer() else {
-                        return
-                    }
-                    
                     try transformFilter.process(sourcePixelBuffer: sourcePixelBuffer,
-                                                destinationPixelBuffer: transformedSourcePixelBuffer,
+                                                destinationPixelBuffer: transformedPixelBuffer,
                                                 at: request.compositionTime)
                     
-                    guard let filter = instruction.filter else {
-                        request.finish(withComposedVideoFrame: transformedSourcePixelBuffer)
-                        return
-                    }
+                    // 2. Apply filter
                     
-                    // 2. Encode compute command
-                    
-                    guard let destinationPixelBuffer = request.renderContext.newPixelBuffer(),
-                          let sourceTexture = transformedSourcePixelBuffer.makeMetalTexture(textureFormat: .bgra8Unorm,
-                                                                                            textureCache: self.metalTextureCache),
+                    guard let filter = filter.filter,
+                          let commandBuffer = self.commandQueue.makeCommandBuffer(),
+                          let destinationPixelBuffer = request.renderContext.newPixelBuffer(),
+                          let sourceTexture = transformedPixelBuffer.makeMetalTexture(textureFormat: .bgra8Unorm,
+                                                                                      textureCache: self.metalTextureCache),
                           let destinationTexture = destinationPixelBuffer.makeMetalTexture(textureFormat: .bgra8Unorm,
                                                                                            textureCache: self.metalTextureCache) else {
-                              request.finish(withComposedVideoFrame: transformedSourcePixelBuffer)
+                              request.finish(withComposedVideoFrame: transformedPixelBuffer)
                               return
                           }
                     
@@ -171,25 +163,23 @@ extension MetalVideoProcessor {
                     
                     commandBuffer.commit()
                     
-                    // 3. Finish with destination pixel buffer
-                    
                     request.finish(withComposedVideoFrame: destinationPixelBuffer)
-                }
-            )
+                })
         ]
         
         guard let firstVideoTrack = asset.tracks(withMediaType: .video).first else {
             return nil
         }
         
-        let transformedSize = firstVideoTrack.naturalSize.applying(firstVideoTrack.preferredTransform)
+        let transformedSize = firstVideoTrack.naturalSize
+            .applying(firstVideoTrack.preferredTransform)
         
-        videoComposition.renderSize = CGSize(width: abs(transformedSize.width),
-                                             height: abs(transformedSize.height))
+        let renderSize = CGSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
+        videoComposition.renderSize = renderSize
         
         // 30 fps
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-            
+        
         return videoComposition
     }
 }

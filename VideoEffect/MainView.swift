@@ -15,12 +15,16 @@ struct MainView: View {
             
             List {
                 
-                NavigationLink(destination: SimpleVideoPlayerView()) {
+                NavigationLink(destination: SimpleVideoPlayer()) {
                     Text("Video Player")
                 }
                 
                 NavigationLink(destination: CoreImageVideoPlayer()) {
                     Text("CoreImage Video Player")
+                }
+
+                NavigationLink(destination: MetalVideoPlayer()) {
+                    Text("Metal Video Player")
                 }
                 
             }

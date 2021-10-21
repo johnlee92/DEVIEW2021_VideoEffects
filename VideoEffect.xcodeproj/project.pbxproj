@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		CE31D67526FD7833009D7315 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = CE31D67426FD7833009D7315 /* Shaders.metal */; };
 		CE31D67726FDA689009D7315 /* MetalVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE31D67626FDA689009D7315 /* MetalVideoPlayer.swift */; };
-		CE31D67926FDA936009D7315 /* SimpleVideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE31D67826FDA936009D7315 /* SimpleVideoPlayerView.swift */; };
+		CE31D67926FDA936009D7315 /* SimpleVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE31D67826FDA936009D7315 /* SimpleVideoPlayer.swift */; };
 		CE7BFB34270204FE00CCA283 /* CoreImageVideoProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7BFB33270204FE00CCA283 /* CoreImageVideoProcessor.swift */; };
 		CE7BFB362702070500CCA283 /* CoreImageVideoFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7BFB352702070500CCA283 /* CoreImageVideoFilter.swift */; };
 		CE7BFB382702093600CCA283 /* CoreImageVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7BFB372702093600CCA283 /* CoreImageVideoPlayer.swift */; };
@@ -30,7 +30,7 @@
 /* Begin PBXFileReference section */
 		CE31D67426FD7833009D7315 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		CE31D67626FDA689009D7315 /* MetalVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoPlayer.swift; sourceTree = "<group>"; };
-		CE31D67826FDA936009D7315 /* SimpleVideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleVideoPlayerView.swift; sourceTree = "<group>"; };
+		CE31D67826FDA936009D7315 /* SimpleVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleVideoPlayer.swift; sourceTree = "<group>"; };
 		CE7BFB33270204FE00CCA283 /* CoreImageVideoProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreImageVideoProcessor.swift; sourceTree = "<group>"; };
 		CE7BFB352702070500CCA283 /* CoreImageVideoFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreImageVideoFilter.swift; sourceTree = "<group>"; };
 		CE7BFB372702093600CCA283 /* CoreImageVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreImageVideoPlayer.swift; sourceTree = "<group>"; };
@@ -72,7 +72,7 @@
 		CE7BFB30270203D500CCA283 /* SimpleVideoPlayer */ = {
 			isa = PBXGroup;
 			children = (
-				CE31D67826FDA936009D7315 /* SimpleVideoPlayerView.swift */,
+				CE31D67826FDA936009D7315 /* SimpleVideoPlayer.swift */,
 			);
 			path = SimpleVideoPlayer;
 			sourceTree = "<group>";
@@ -220,7 +220,7 @@
 				CE9513CF26DCACE40016944F /* PhotoPicker.swift in Sources */,
 				CE7C71E826DF2A200002C4FE /* ActivityView.swift in Sources */,
 				CEDB248A27100B8B00AC9CC1 /* MetalVideoProcessor+CIHelper.swift in Sources */,
-				CE31D67926FDA936009D7315 /* SimpleVideoPlayerView.swift in Sources */,
+				CE31D67926FDA936009D7315 /* SimpleVideoPlayer.swift in Sources */,
 				CE7BFB382702093600CCA283 /* CoreImageVideoPlayer.swift in Sources */,
 				CE31D67726FDA689009D7315 /* MetalVideoPlayer.swift in Sources */,
 				CEDB246627037B8A00AC9CC1 /* Extensions.swift in Sources */,

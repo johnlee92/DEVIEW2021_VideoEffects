@@ -27,9 +27,7 @@ extension MetalVideoProcessor {
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
         ]
         
-        func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) {
-            
-        }
+        func renderContextChanged(_ newRenderContext: AVVideoCompositionRenderContext) { }
         
         func startRequest(_ asyncVideoCompositionRequest: AVAsynchronousVideoCompositionRequest) {
             
@@ -53,7 +51,7 @@ extension MetalVideoProcessor {
             
             instruction.handleRequest(asyncVideoCompositionRequest)
         }
-        
+  
         func cancelAllPendingVideoCompositionRequests() {
             self.lock.lock()
             self.pendingRequests.forEach { $0.finishCancelledRequest() }
@@ -61,9 +59,6 @@ extension MetalVideoProcessor {
             self.lock.unlock()
         }
     }
-}
-
-extension MetalVideoProcessor {
     
     final class Instruction: NSObject, AVVideoCompositionInstructionProtocol {
         
@@ -79,18 +74,14 @@ extension MetalVideoProcessor {
         
         var passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
         
-        var filter: MetalVideoFilter?
-        
         var completionHandler: (() -> Void)?
         
         private let handler: Handler
         
         init(timeRange: CMTimeRange,
-             filter: MetalVideoFilter?,
              handler: @escaping Handler) {
             
             self.timeRange = timeRange
-            self.filter = filter
             self.handler = handler
         }
         

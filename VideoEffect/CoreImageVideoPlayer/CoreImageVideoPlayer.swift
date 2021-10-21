@@ -14,6 +14,10 @@ struct CoreImageVideoPlayer: View {
     
     @State var showsPhotoPicker: Bool = false
     
+    @State var outputURL: URL?
+    
+    @State var errorMessage: String?
+    
     var body: some View {
         
         VideoPlayer(player: videoProcessor.player)
@@ -24,6 +28,7 @@ struct CoreImageVideoPlayer: View {
             .onDisappear() {
                 videoProcessor.player.pause()
             }
+            
             .sheet(isPresented: $showsPhotoPicker) {
                 PhotoPicker(configuration: .default,
                             isPresented: $showsPhotoPicker) { url in
@@ -32,15 +37,52 @@ struct CoreImageVideoPlayer: View {
                     }
                 }
             }
+            .sheet(item: $outputURL) { url in
+                ActivityView(activityItems: [url])
+            }
+            .alert(item: $errorMessage) {
+                Alert(title: Text("Error"), message: Text($0))
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Open") {
                         showsPhotoPicker = true
                     }
                 }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Export") {
+                        videoProcessor.export { result in
+                            switch result {
+                            case let .success(url):
+                                self.outputURL = url
+                            case let .failure(error):
+                                self.errorMessage = error.localizedDescription
+                            }
+                        }
+                    }
+                }
             }
-            .overlay(controlView)
-            .navigationBarTitle("CoreImage Video Player", displayMode: .inline)
+            .overlay(
+                ZStack {
+                    controlView
+                    
+                    if let progress = videoProcessor.exportProgress {
+                        
+                        ProgressView("Exporting... \(Int(progress * 100))%", value: progress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(width: 200)
+                            .padding(30)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .foregroundColor(Color(UIColor.secondarySystemBackground))
+                                    .opacity(0.9)
+                            )
+                    }
+                }
+            )
+            .navigationTitle("CoreImage Video Player")
+            .navigationBarTitleDisplayMode(.inline)
     }
     
     private var controlView: some View {
@@ -55,14 +97,14 @@ struct CoreImageVideoPlayer: View {
                         Text(filter.rawValue).tag(filter)
                     }
                 }
-               .pickerStyle(MenuPickerStyle())
-               .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-               .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .foregroundColor(Color(UIColor.secondarySystemBackground))
-                        .opacity(0.9)
-               )
-                
+                .pickerStyle(MenuPickerStyle())
+                .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                .background(
+                     RoundedRectangle(cornerRadius: 10)
+                         .foregroundColor(Color(UIColor.secondarySystemBackground))
+                         .opacity(0.9)
+                )
+                    
                 Spacer()
             }
             .padding()

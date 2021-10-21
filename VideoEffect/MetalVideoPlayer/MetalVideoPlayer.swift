@@ -15,14 +15,13 @@ struct MetalVideoPlayer: View {
     
     @State var showsPhotoPicker: Bool = false
     
-    @State var activityItem: URL?
+    @State var outputURL: URL?
     
-    @State var alertMessage: String?
+    @State var errorMessage: String?
     
     var body: some View {
         
         VideoPlayer(player: videoProcessor.player)
-            .overlay(controlView)
             .aspectRatio(1, contentMode: .fit)
             .onAppear() {
                 videoProcessor.player.play()
@@ -30,9 +29,7 @@ struct MetalVideoPlayer: View {
             .onDisappear() {
                 videoProcessor.player.pause()
             }
-            .onChange(of: videoProcessor.player) { player in
-                player.play()
-            }
+            
             .sheet(isPresented: $showsPhotoPicker) {
                 PhotoPicker(configuration: .default,
                             isPresented: $showsPhotoPicker) { url in
@@ -41,11 +38,13 @@ struct MetalVideoPlayer: View {
                     }
                 }
             }
-            .sheet(item: $activityItem) { item in
-                ActivityView(activityItems: [item])
+            .sheet(item: $outputURL) { url in
+                ActivityView(activityItems: [url])
+            }
+            .alert(item: $errorMessage) {
+                Alert(title: Text("Error"), message: Text($0))
             }
             .toolbar {
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Open") {
                         showsPhotoPicker = true
@@ -53,31 +52,38 @@ struct MetalVideoPlayer: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    
-                    if let progress = self.videoProcessor.exportProgress {
-                        
-                        ProgressView(value: progress)
-                            .progressViewStyle(LinearProgressViewStyle())
-                            .frame(width: 72)
-                        
-                    } else {
-                        Button("Export") {
-                            videoProcessor.export { result in
-                                switch result {
-                                case let .success(url):
-                                    self.activityItem = url
-                                case let .failure(error):
-                                    self.alertMessage = error.localizedDescription
-                                }
+                    Button("Export") {
+                        videoProcessor.export { result in
+                            switch result {
+                            case let .success(url):
+                                self.outputURL = url
+                            case let .failure(error):
+                                self.errorMessage = error.localizedDescription
                             }
                         }
                     }
                 }
             }
-            .alert(item: $alertMessage) { message in
-                Alert(title: Text("Alert"), message: Text(message))
-            }
-            .navigationBarTitle("Metal Video Player", displayMode: .inline)
+            .overlay(
+                ZStack {
+                    controlView
+                    
+                    if let progress = videoProcessor.exportProgress {
+                        
+                        ProgressView("Exporting... \(Int(progress * 100))%", value: progress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(width: 200)
+                            .padding(30)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .foregroundColor(Color(UIColor.secondarySystemBackground))
+                                    .opacity(0.9)
+                            )
+                    }
+                }
+            )
+            .navigationTitle("Metal Video Player")
+            .navigationBarTitleDisplayMode(.inline)
     }
     
     private var controlView: some View {

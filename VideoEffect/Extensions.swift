@@ -9,18 +9,6 @@ import Foundation
 import CoreImage
 import Metal
 
-extension String: Identifiable {
-    public var id: String {
-        self
-    }
-}
-
-extension URL: Identifiable {
-    public var id: String {
-        self.absoluteString
-    }
-}
-
 extension CVPixelBuffer {
     
     func makeMetalTexture(textureFormat: MTLPixelFormat,
@@ -72,5 +60,17 @@ extension CVMetalTextureCache {
         }
         
         return cache
+    }
+}
+
+extension String: Identifiable {
+    public var id: String {
+        self
+    }
+}
+
+extension URL: Identifiable {
+    public var id: String {
+        self.absoluteString
     }
 }
